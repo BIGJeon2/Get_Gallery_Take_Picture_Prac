@@ -35,6 +35,8 @@ android {
 }
 
 dependencies {
+    //권한 요청
+    implementation 'gun0912.ted:tedpermission:2.2.3'
     //Picasso사용
     implementation 'com.squareup.picasso:picasso:2.71828'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
