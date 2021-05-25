@@ -1,32 +1,38 @@
 package com.example.take_picure_by_camera_practice
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
-import android.media.ImageReader
 import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.example.take_picure_by_camera_practice.databinding.ActivityMainBinding
-import com.gun0912.tedpermission.PermissionListener
-import com.gun0912.tedpermission.TedPermission
 import com.squareup.picasso.Picasso
 import java.io.File
 import java.io.FileOutputStream
 import java.lang.Exception
-import java.lang.StringBuilder
-import java.security.Permission
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.jar.Manifest
+import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity() {
     private val REQUEST_IMAGE_CAPTURE = 1
     private val get_img_requestCode = 1001
+    private val Permissions = arrayOf(
+        android.Manifest.permission.READ_EXTERNAL_STORAGE,
+        android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        android.Manifest.permission.CAMERA
+    )
     private lateinit var currentPhotoPath: String
     private var img_Uri: Uri? = null
     private lateinit var binding: ActivityMainBinding
@@ -35,8 +41,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         var view = binding.root
         setContentView(view)
-
-        setPermission()
 
         //사진가져오기
         binding.GetPictureByGallery.setOnClickListener {
@@ -49,7 +53,39 @@ class MainActivity : AppCompatActivity() {
             Take_Picture()
         }
     }
+    private fun Permission_Check(){
+        var Rejected_Permission = ArrayList<String>()
+        for(permission in Permissions){
+            if(ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED){
+                Rejected_Permission.add(permission)
+            }
+        }
+        if(Rejected_Permission.isNotEmpty()){
+            val array = arrayOfNulls<String>(Rejected_Permission.size)
+            ActivityCompat.requestPermissions(this, Rejected_Permission.toArray(array), REQUEST_IMAGE_CAPTURE)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when(requestCode) {
+            REQUEST_IMAGE_CAPTURE -> {
+                if (grantResults.isEmpty()){
+                    for ((i, permission) in  permissions.withIndex()){
+                        if (grantResults[i] != PackageManager.PERMISSION_GRANTED){
+                            Log.i("TAG", "${permission}을 거절하셨습니다.")
+                        }
+                    }
+                }
+            }
+        }
+    }
     private fun Take_Picture(){
+       Permission_Check()
         Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
             takePictureIntent.resolveActivity(packageManager)?.also {
                 val photoFile: File? = try{
@@ -58,7 +94,7 @@ class MainActivity : AppCompatActivity() {
                     null
                 }
                 photoFile?.also {
-                    val photoUri: Uri = FileProvider.getUriForFile(this, "com.gmail.moontae0317.memory.fileprovider", it)
+                    val photoUri: Uri = FileProvider.getUriForFile(this, "com.example.take_picure_by_camera_practice.fileprovider", it)
                     takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
                     startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
                 }
@@ -71,24 +107,6 @@ class MainActivity : AppCompatActivity() {
             return File.createTempFile("JPEG_${timestamp}_", ".jpeg", storageDir).apply {
             currentPhotoPath = absolutePath
         }
-    }
-
-    private fun setPermission() {
-        val permisiion = object : PermissionListener{
-            override fun onPermissionDenied(deniedPermissions: MutableList<String>?) {
-                Toast.makeText(this@MainActivity, "권한이 거부되었습니다.", Toast.LENGTH_SHORT).show()
-            }
-
-            override fun onPermissionGranted() {
-                Toast.makeText(this@MainActivity, "권한이 설정되었습니다.", Toast.LENGTH_SHORT).show()
-            }
-        }
-        TedPermission.with(this)
-            .setPermissionListener(permisiion)
-            .setRationaleMessage("카메라 사용을 위해 권한을 허용해 주세요")
-            .setDeniedMessage("거부되셨습니다.")
-            .setPermissions(android.Manifest.permission.WRITE_EXTERNAL_STORAGE, android.Manifest.permission.READ_EXTERNAL_STORAGE)
-            .check()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
