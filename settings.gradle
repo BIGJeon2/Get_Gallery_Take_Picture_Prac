@@ -1,0 +1,2 @@
+rootProject.name = "Take_Picure_By_Camera_Practice"
+include ':app'
